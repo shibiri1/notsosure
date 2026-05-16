@@ -72,6 +72,6 @@ Who knows when it will be done
 # Inspiration
 
 - LostArk Bible → data source
-- WoW Armory → presentation philosophy
-- Korean Lost Ark Armory → layout direction
+- WoW Armory → presentation philosophy(somewhat)
+- Korean Lost Ark Armory → layout direction(somewhat)
 - Lineage II → visual identity and iconography
