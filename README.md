@@ -56,6 +56,6 @@ Currently validating DOM extraction across multiple character builds and progres
 
 Inspiration
 LostArk Bible → data source
-WoW Armory → presentation philosophy
-Korean Lost Ark Armory → layout direction
-Lineage II → visual identity and iconography
+WoW Armory → presentation philosophy(somewhat)
+Korean Lost Ark Armory → layout direction(somewhat)
+Lineage II → visual identity and iconography(best icons in any MMORPG)
