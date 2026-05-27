@@ -650,13 +650,27 @@
       if (!cardsHeader) return null;
       const container = cardsHeader.parentElement;
       const sets = [...container.querySelectorAll('.flex.divide-x span')].map(el => el.textContent.trim());
+
+      // Grade is extracted from the card border image src (tooltip1-4)
+      // tooltip1 = uncommon | tooltip2 = rare | tooltip3 = epic | tooltip4 = legendary
+      const GRADE_MAP = {
+        'tooltip1': 'uncommon',
+        'tooltip2': 'rare',
+        'tooltip3': 'epic',
+        'tooltip4': 'legendary',
+      };
+
       const cards = [...container.querySelectorAll('[title]')]
         .filter(el => el.getAttribute('title').length > 2)
         .map(el => {
           const leftStyle = el.querySelector('[style*="left"]')?.style.left || '-100%';
           const awakening = Math.max(0, Math.min(5, Math.round(5 - (parseFloat(leftStyle) * -1) / 20)));
-          return { name: el.getAttribute('title'), awakening };
+          const gradeImg = el.querySelector('img[src*="grade"]')?.getAttribute('src') || '';
+          const gradeKey = gradeImg.match(/tooltip(\d)/)?.[0];
+          const grade = GRADE_MAP[gradeKey] || 'uncommon';
+          return { name: el.getAttribute('title'), awakening, grade };
         });
+
       return { sets, cards };
     } catch (e) {
       console.error('[Extractor] extractCards failed:', e);
