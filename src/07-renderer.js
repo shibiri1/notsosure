@@ -232,13 +232,11 @@
     var stone=data.stone;
     document.getElementById('stone-icon').src='https://cdn.jsdelivr.net/gh/shibiri1/notsosure@main/assets/Art_Miscs/magic_stone_talisman.png';
     document.getElementById('stone-engravings').innerHTML=(stone&&stone.engravings||[]).map(function(e){
-      var lvc={1:'#a0d820',2:'#16c8e0',3:'#b535cc',4:'#d4a820'};
-      var col=lvc[e.level]||'#8888aa';
+      var col=STONE_LEVEL_COLOR[e.level]||'#8888aa';
       return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">'
-        +'<span style="font-size:12px;font-weight:600;color:var(--text-sec);flex:1">'+e.name+'</span>'
+        +'<span style="font-size:12px;font-weight:600;color:var(--gold);flex:1">'+e.name+'</span>'
         +'<img style="width:14px;height:14px;object-fit:contain;flex-shrink:0;margin-left:4px;" src="https://lostark.bible/i/ico_ability_stone_symbol.png">'
         +'<span style="font-size:11px;font-weight:700;color:'+col+'">Lv.'+e.level+'</span>'
-        +'</div>';
         +'</div>';
     }).join('');
     var brace=data.bracelet;

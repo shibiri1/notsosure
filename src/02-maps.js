@@ -342,3 +342,14 @@
     green: '#4ade80',
     gold:  '#f59e0b',
   };
+
+  // Ability Stone "malus" engravings -- negative effects that can roll
+  // unluckily on a stone. These are never useful information to display
+  // and should always be filtered out of the stone's engraving list.
+  // IDs confirmed against real payload data (loadout.items ability_stone
+  // .data.engravings[].id) plus keyword search in engravingNames covering
+  // both grade tiers of each malus type.
+  const MALUS_STONE_ENGRAVING_IDS = new Set([
+    800, 801, 802, 803,    // Atk. Power / Defense / Atk. Speed / Move Speed Reduction (tier A)
+    1800, 1801, 1802, 1803, // same 4, tier B
+  ]);

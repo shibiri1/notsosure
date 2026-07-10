@@ -643,6 +643,23 @@
     if (PAYLOAD_MAPS) {
       try {
         const raw = extractRawPayload();
+        // Strip ability-stone "malus" (negative) engravings from the RAW
+        // payload before decoding -- filtering by raw id here (not by
+        // resolved name afterward) keeps the exclusion scoped exactly to
+        // the ability_stone item, with zero risk of matching something
+        // unrelated elsewhere (e.g. the main Engravings panel).
+        try {
+          const loadouts = raw?.data?.[2]?.data?.loadouts || [];
+          loadouts.forEach(function(l) {
+            const stoneItem = (l.items || []).find(function(i) { return i.slot === 'ability_stone'; });
+            if (stoneItem?.data?.engravings) {
+              stoneItem.data.engravings = stoneItem.data.engravings.filter(function(e) {
+                return !MALUS_STONE_ENGRAVING_IDS.has(e.id);
+              });
+            }
+          });
+        } catch (e) { /* non-fatal -- if this fails, malus just isn't filtered this run */ }
+
         payloadParsed = parsePayload(raw, PAYLOAD_MAPS);
       } catch (e) {
         console.warn('[Extractor] Payload extraction failed -- falling back to DOM.', e);
@@ -664,7 +681,18 @@
       gear:        payloadParsed ? payloadParsed.gear : extractGear(),
       accessories: extractAccessories(), // DOM-only: roll-quality color must match live site bypass, not payload-computed tier
       bracelet:    extractBracelet(),    // DOM-only: same reason as accessories
-      stone:       payloadParsed ? payloadParsed.stone : extractStone(),
+      stone: payloadParsed
+        ? {
+            tier: payloadParsed.stone.tier,
+            engravings: payloadParsed.stone.engravings.map(function(e) {
+              // decodeStone()'s `level` field is actually the raw invested
+              // node count (2-10), NOT the game's displayed Lv.1-4 scale --
+              // convert it here before it reaches the renderer.
+              const correctedLevel = stoneNodesToLevel(e.level);
+              return Object.assign({}, e, { level: correctedLevel });
+            }),
+          }
+        : extractStone(),
       engravings: payloadParsed
         ? (function() {
             // grade is confirmed reliable from payload -- resolve color here
@@ -678,10 +706,15 @@
             const domEngravings = extractEngravings();
             return payloadParsed.engravings.map(function(e, i) {
               const domMatch = domEngravings[i] || {};
+              // Payload's progress is a bare number string (e.g. "0"), but
+              // the renderer expects "X/20" format (matching the site's own
+              // "Propulsion 20/20" display). Denominator is always 20 books.
+              const progressNum = parseInt(e.progress, 10) || 0;
               return Object.assign({}, e, {
                 domColor:     ENGRAVING_GRADE_COLOR[e.grade] || null,
                 gradeIconUrl: domMatch.gradeIconUrl || null,
                 stoneIconUrl: domMatch.stoneIconUrl || null,
+                progress:     progressNum + '/20',
               });
             });
           })()
