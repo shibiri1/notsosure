@@ -23,7 +23,12 @@
     return           'linear-gradient(135deg,rgba(42,98,4,1),rgba(207,247,20,1))';
   }
   function gemGradient(lv) {
-    var g={7:'linear-gradient(135deg,#4d3311,#b57a2d)',8:'linear-gradient(135deg,#5c1a05,#e35205)',9:'linear-gradient(135deg,#6e1302,#ff4500)',10:'linear-gradient(135deg,#3d3325,#dcc999)'};
+    var g={
+      7:  'linear-gradient(135deg,#3d2a0d,#9c6820)',
+      8:  'linear-gradient(135deg,#5c1a05,#e35205)',
+      9:  'linear-gradient(135deg,#8a0f02 0%,#d61f1f 60%,#ff6b1a 100%)',
+      10: 'linear-gradient(135deg,#3d3325,#dcc999)',
+    };
     return g[lv]||g[7];
   }
   function gemSym(key, lv) {

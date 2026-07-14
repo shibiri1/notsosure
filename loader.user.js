@@ -1,7 +1,9 @@
 // ==UserScript==
 // @name         LostArk Bible -- Custom UI
 // @namespace    https://github.com/shibiri1/notsosure
-// @version      4.6a
+// @version      4.7
+// @updateURL    https://cdn.jsdelivr.net/gh/shibiri1/notsosure@main/loader.user.js
+// @downloadURL  https://cdn.jsdelivr.net/gh/shibiri1/notsosure@main/loader.user.js
 // @description  Custom UI overlay for LostArk Bible
 // @author       shibiri1
 // @match        https://lostark.bible/character/*/*

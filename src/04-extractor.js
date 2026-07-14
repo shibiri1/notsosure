@@ -660,13 +660,37 @@
           });
         } catch (e) { /* non-fatal -- if this fails, malus just isn't filtered this run */ }
 
-        payloadParsed = parsePayload(raw, PAYLOAD_MAPS);
+        // Auto-detect WHICH loadout (raid vs chaos_dungeon vs others) is
+        // actually being displayed right now. parsePayload() defaults to
+        // 'most_recent_chaos_dungeon' if not told otherwise -- which is
+        // wrong whenever the site is showing a different loadout. DOM-
+        // extracted engravings are always in sync with what's on screen
+        // (no timing/polling issues, unlike currentCP), so we use that as
+        // the ground truth: resolve each payload loadout's engraving IDs to
+        // names, and pick whichever loadout's name set matches the DOM.
+        let detectedClassification = null;
+        try {
+          const domEngravingNames = extractEngravings().map(function(e) { return e.name; }).sort();
+          const loadouts = raw?.data?.[2]?.data?.loadouts || [];
+          let bestMatch = null, bestScore = -1;
+          loadouts.forEach(function(l) {
+            const resolvedNames = (l.engravings || []).map(function(eng) {
+              const info = PAYLOAD_MAPS.engravingNames[eng.id];
+              return info ? info[0] : null;
+            }).filter(Boolean).sort();
+            const overlap = resolvedNames.filter(function(n) { return domEngravingNames.includes(n); }).length;
+            if (overlap > bestScore) { bestScore = overlap; bestMatch = l.classification; }
+          });
+          detectedClassification = bestMatch;
+        } catch (e) { /* non-fatal -- falls through to parsePayload's own default */ }
+
+        payloadParsed = parsePayload(raw, PAYLOAD_MAPS, detectedClassification ? { preferredClassification: detectedClassification } : undefined);
       } catch (e) {
         console.warn('[Extractor] Payload extraction failed -- falling back to DOM.', e);
       }
     }
 
-    const arkPassive = payloadParsed ? payloadParsed.arkPassive : extractArkPassive();
+    const arkPassive = extractArkPassive(); // DOM-only: payload icon-merge broke some icons (enlightenment/leap)
 
     if (character) {
       character.spec = detectSpec(character.class, arkPassive);
@@ -720,31 +744,19 @@
           })()
         : extractEngravings(),
       gems: payloadParsed ? payloadParsed.gems : extractGems(),
-      skills: extractSkills(),
+      skills: (function() {
+        const skillsData = extractSkills(); // always DOM: names/tripods/rune/icon reliable, gems are NOT (broken filename lookup)
+        if (!payloadParsed) return skillsData; // no payload -- keep DOM-derived gems as-is (imperfect, but no better source)
+        // Replace each skill's .gems with payload-sourced data, matched by
+        // skill name. payloadParsed.gems already resolves {skill,type,level}
+        // reliably via maps.normalGemNames -- no filename pattern guessing.
+        return skillsData.map(function(skill) {
+          const matchedGems = payloadParsed.gems.filter(function(g) { return g.skill === skill.name; });
+          return Object.assign({}, skill, { gems: matchedGems });
+        });
+      })(),
       cards: extractCards(),
-      arkPassive: payloadParsed
-        ? (function() {
-            // Same icon-merge strategy as engravings: payload has no iconUrl,
-            // DOM extractor does. Matched by index WITHIN each tree
-            // (evolution/enlightenment/leap), since node order within a tree
-            // should match the on-site display order for that tree.
-            const domArkPassive = extractArkPassive() || {};
-            const trees = ['evolution', 'enlightenment', 'leap'];
-            const merged = {};
-            trees.forEach(function(tree) {
-              const payloadTree = (arkPassive || {})[tree] || { points: 0, passives: [] };
-              const domTree = domArkPassive[tree] || { passives: [] };
-              merged[tree] = {
-                points: payloadTree.points,
-                passives: payloadTree.passives.map(function(p, i) {
-                  const domMatch = domTree.passives[i] || {};
-                  return Object.assign({}, p, { iconUrl: domMatch.iconUrl || null });
-                }),
-              };
-            });
-            return merged;
-          })()
-        : arkPassive,
+      arkPassive,
       arkGrid: await extractArkGrid(),
       combatPowerBreakdown: extractCombatPowerBreakdown(),
     };
