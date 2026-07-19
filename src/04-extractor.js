@@ -515,6 +515,60 @@
     });
   }
 
+  // Lightweight static-only extraction of ark grid icon/color data -- NO
+  // hover, no scroll, no waiting. Used only when payload is available (which
+  // reliably supplies name/points/gems/bonuses text data already). The
+  // existing extractArkGrid() below stays hover-based and untouched, kept as
+  // the full DOM fallback for when payload isn't available.
+  function extractArkGridVisualsOnly() {
+    try {
+      const arkGridHeader = findByText('Ark Grid');
+      if (!arkGridHeader) return null;
+      const container = arkGridHeader.parentElement;
+      const gridContent = container.children[1];
+      const leftCol = gridContent?.children[0];
+      const rightCol = gridContent?.children[1];
+      const inner = leftCol?.children[0];
+
+      // Cores: icon, type, rarity color -- same static reads as before.
+      const coreEls = [...(rightCol?.querySelectorAll('[data-melt-tooltip-trigger]') || [])];
+      const domCores = coreEls.map(el => {
+        const gemImg = el.querySelector('img[class*="h-full"]');
+        const gemIconUrl = gemImg?.src || null;
+        const allImgs = [...el.querySelectorAll('img')];
+        const typeImg = allImgs.find(i => i.src.includes('emoticon_arkgrid'));
+        const typeIconUrl = typeImg?.src || null;
+        const typeFromImg = typeImg?.src.match(/emoticon_arkgrid_(.+)\.png/)?.[1]
+          ?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || null;
+        const coreSlotEl = el.querySelector('img[class*="h-full"]')?.parentElement;
+        const coreBg = coreSlotEl?.getAttribute('style') || '';
+        const coreColors = coreBg.match(/#[0-9a-fA-F]{6}/g);
+        const coreRarityColor = coreColors ? coreColors[coreColors.length-1] : null;
+        return { gemIconUrl, typeIconUrl, type: typeFromImg || '', rarityColor: coreRarityColor };
+      });
+
+      // Gems per core group: icon + rarity color, static reads, no hover.
+      const groups = [...(inner?.children || [])];
+      const domGemsByCore = groups.map(function(group) {
+        const triggers = [...group.querySelectorAll('[data-melt-tooltip-trigger]')];
+        const gemTriggers = triggers.slice(1); // skip first (core itself)
+        return gemTriggers.map(function(trigger) {
+          const slotEl = trigger.querySelector('img[class*="h-full"]');
+          const gemIconUrl = slotEl?.src || null;
+          const bgStyle = slotEl?.parentElement?.getAttribute('style') || '';
+          const colorMatches = bgStyle.match(/#[0-9a-fA-F]{6}/g);
+          const rarityColor = colorMatches ? colorMatches[colorMatches.length-1] : null;
+          return { gemIconUrl, rarityColor };
+        });
+      });
+
+      return { domCores, domGemsByCore };
+    } catch (e) {
+      console.error('[Extractor] extractArkGridVisualsOnly failed:', e);
+      return null;
+    }
+  }
+
   async function extractArkGrid() {
     try {
       const arkGridHeader = findByText('Ark Grid');
@@ -757,7 +811,32 @@
       })(),
       cards: extractCards(),
       arkPassive,
-      arkGrid: await extractArkGrid(),
+      arkGrid: payloadParsed && payloadParsed.arkGrid
+        ? (function() {
+            // Fast path: payload gives reliable name/points/gems/bonuses;
+            // static DOM read (no hover, no waiting) supplies icon/color.
+            const visuals = extractArkGridVisualsOnly();
+            if (!visuals) return payloadParsed.arkGrid; // no icons, but data is still correct
+            const cores = payloadParsed.arkGrid.cores.map(function(core, i) {
+              const domCore = visuals.domCores[i] || {};
+              const domGems = visuals.domGemsByCore[i] || [];
+              return Object.assign({}, core, {
+                gemIconUrl:  domCore.gemIconUrl || null,
+                typeIconUrl: domCore.typeIconUrl || null,
+                type:        domCore.type || core.type,
+                rarityColor: domCore.rarityColor || null,
+                gems: core.gems.map(function(gem, j) {
+                  const domGem = domGems[j] || {};
+                  return Object.assign({}, gem, {
+                    gemIconUrl:  domGem.gemIconUrl || null,
+                    rarityColor: domGem.rarityColor || null,
+                  });
+                }),
+              });
+            });
+            return { cores, bonuses: payloadParsed.arkGrid.bonuses };
+          })()
+        : await extractArkGrid(), // fallback: full hover-based DOM extraction
       combatPowerBreakdown: extractCombatPowerBreakdown(),
     };
 
